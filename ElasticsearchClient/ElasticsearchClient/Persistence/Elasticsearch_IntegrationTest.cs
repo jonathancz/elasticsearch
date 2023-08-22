@@ -13,6 +13,80 @@ public class ElasticsearchIntegrationTests
     {
         var settings = new ConnectionSettings(new Uri("http://localhost:9200")); // Replace with your Elasticsearch URI
         _client = new ElasticClient(settings);
+        GenerateCustomers();
+        GenerateSubdivisions();
+    }
+
+    private void GenerateSubdivisions()
+    {
+        var subdivisionFaker = new SubdivisionFaker();
+        var subdivisions = subdivisionFaker.Generate(500);
+
+        var bulkAllSubdivision = _client.BulkAll(subdivisions, b => b
+            .Index("test_subdivision_index")
+            .BackOffTime("30s")
+            .BackOffRetries(2)
+            .RefreshOnCompleted(true)
+            .MaxDegreeOfParallelism(Environment.ProcessorCount)
+            .Size(100)
+        );
+
+        bulkAllSubdivision.Subscribe(new BulkAllObserver(
+            onNext: (b) =>
+            {
+                // Log or print the processed page
+                Console.WriteLine($"Indexed page {b.Page}");
+            },
+            onError: (e) =>
+            {
+                // Log or print the error
+                Console.WriteLine($"An error occurred: {e.Message}");
+            },
+            onCompleted: () =>
+            {
+                // Log or print completion
+                Console.WriteLine("Bulk indexing complete");
+            }
+        ));
+    }
+
+    private void GenerateCustomers()
+    {
+        var customerFaker = new CustomerFaker();
+
+
+        // Generate 500 fake customers and 500 fake subdivisions
+        var customers = customerFaker.Generate(500);
+
+
+        // Index these into Elasticsearch
+        var bulkAllCustomer = _client.BulkAll(customers, b => b
+            .Index("test_customer_index")
+            .BackOffTime("30s")
+            .BackOffRetries(2)
+            .RefreshOnCompleted(true)
+            .MaxDegreeOfParallelism(Environment.ProcessorCount)
+            .Size(100)
+        );
+
+
+        bulkAllCustomer.Subscribe(new BulkAllObserver(
+            onNext: (b) =>
+            {
+                // Log or print the processed page
+                Console.WriteLine($"Indexed page {b.Page}");
+            },
+            onError: (e) =>
+            {
+                // Log or print the error
+                Console.WriteLine($"An error occurred: {e.Message}");
+            },
+            onCompleted: () =>
+            {
+                // Log or print completion
+                Console.WriteLine("Bulk indexing complete");
+            }
+        ));
     }
 
     [Fact]
