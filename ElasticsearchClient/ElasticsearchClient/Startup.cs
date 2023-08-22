@@ -1,4 +1,5 @@
-﻿using Nest;
+﻿using ElasticsearchClient.Application.Search;
+using Nest;
 
 namespace ElasticsearchClient;
 
@@ -12,7 +13,9 @@ public class Startup
 
         var client = new ElasticClient(settings);
 
+        // Registering Services
         services.AddSingleton<IElasticClient>(client);
+        services.AddScoped<ISearchService, SearchService>();
 
         services.AddControllers();
     }
