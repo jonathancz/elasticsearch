@@ -13,11 +13,9 @@ public class ElasticsearchIntegrationTests
     {
         var settings = new ConnectionSettings(new Uri("http://localhost:9200")); // Replace with your Elasticsearch URI
         _client = new ElasticClient(settings);
-        GenerateCustomers();
-        GenerateSubdivisions();
     }
 
-    private void GenerateSubdivisions()
+    private void GenerateSubdivisions(Action onComplete)
     {
         var subdivisionFaker = new SubdivisionFaker();
         var subdivisions = subdivisionFaker.Generate(500);
@@ -50,7 +48,7 @@ public class ElasticsearchIntegrationTests
         ));
     }
 
-    private void GenerateCustomers()
+    private void GenerateCustomers(Action onComplete)
     {
         var customerFaker = new CustomerFaker();
 
@@ -92,7 +90,9 @@ public class ElasticsearchIntegrationTests
     [Fact]
     public void Should_Onboard_Data_Into_Indices()
     {
-        // 1. Delete indices if they exist (useful for repeatable tests)
+        var resetEvent = new ManualResetEvent(false); // For synchronization
+
+        // 1. Delete indices if they exist
         _client.Indices.Delete("test_customer_index");
         _client.Indices.Delete("test_subdivision_index");
 
@@ -106,13 +106,16 @@ public class ElasticsearchIntegrationTests
                 .AutoMap<Subdivision>()));
 
         // 3. Index some test data
+        GenerateCustomers(() => GenerateSubdivisions(() => resetEvent.Set()));
 
+        // Wait for data to be onboarded
+        resetEvent.WaitOne();
 
         // 4. Refresh the indices to make sure the data is searchable
         _client.Indices.Refresh("test_customer_index");
         _client.Indices.Refresh("test_subdivision_index");
 
-        // 5. Search for the test data to verify it's been indexed
+        // 5. Search for the test data
         var searchCustomerResponse = _client.Search<Customer>(s => s
             .Index("test_customer_index")
             .Query(q => q
