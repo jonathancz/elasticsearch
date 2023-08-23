@@ -23,6 +23,7 @@ public class SearchService : ISearchService
                 .Match(m => m
                     .Field(f => f.Name)
                     .Query(query)
+                    .Fuzziness(Fuzziness.Auto)
                 )
             )
         );
