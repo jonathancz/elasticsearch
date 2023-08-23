@@ -1,4 +1,7 @@
 ﻿using ElasticsearchClient.Modules;
+using ElasticsearchClient.Modules.Customer;
+using ElasticsearchClient.Modules.Subdivision;
+using Microsoft.AspNetCore.Mvc;
 using Nest;
 
 namespace ElasticsearchClient.Application.Search;
@@ -12,29 +15,27 @@ public class SearchService : ISearchService
         _elasticClient = elasticClient;
     }
 
-    public List<OmnisearchViewModel> PerformOmnisearch(string query)
+    public async Task<IEnumerable<Customer>> PerformCustomerSearch(string query, string indexName)
     {
-        // This can be moved to a Query or Repository layer.
-        var searchResponse = _elasticClient.Search<Dictionary<string, object>>(s => s
-            .Index("customer_index, subdivision_index, lot_index, buildingdepartment_index, deacomitem_index")
+        var searchResponse = await _elasticClient.SearchAsync<Customer>(s => s
+            .Index(indexName)
             .Query(q => q
-                .MultiMatch(m => m
-                    .Fields(f => f.Field("name").Field("description"))
+                .Match(m => m
+                    .Field(f => f.Name)
                     .Query(query)
                 )
             )
         );
+        return searchResponse.Documents;
+    }
 
-        var results = new List<OmnisearchViewModel>();
-        foreach (var document in searchResponse.Documents)
-        {
-            results.Add(new OmnisearchViewModel
-            {
-                EntityType = (document.ContainsKey("entityType") ? document["entityType"].ToString() : "Unknown")!,
-                Entity = document
-            });
-        }
-
-        return results;
+    public async Task<IEnumerable<Subdivision>> PerformSubdivisionSearch(string query, string indexName)
+    {
+        var searchResponse = await _elasticClient.SearchAsync<Subdivision>(s => s
+            .Index(indexName)
+            .Query(q => q
+                .QueryString(d => d
+                    .Query(query))));
+        return searchResponse.Documents;
     }
 }

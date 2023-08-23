@@ -7,6 +7,10 @@ public class Subdivision
     public int Id { get; set; }
     public string Name { get; set; }
 
+    public Subdivision()
+    {
+    }
+
     public Subdivision(int id, string name)
     {
         Id = id;

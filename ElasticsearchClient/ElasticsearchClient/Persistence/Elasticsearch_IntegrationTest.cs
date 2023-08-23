@@ -13,12 +13,38 @@ public class ElasticsearchIntegrationTests
     {
         var settings = new ConnectionSettings(new Uri("http://localhost:9200")); // Replace with your Elasticsearch URI
         _client = new ElasticClient(settings);
+
+        Setup();
     }
 
-    private void GenerateSubdivisions(Action onComplete)
+    private void Setup()
+    {
+        _client.Indices.Delete("test_customer_index");
+        _client.Indices.Delete("test_subdivision_index");
+        
+        var customerIndexExistsResponse = _client.Indices.Exists("test_customer_index");
+        if (!customerIndexExistsResponse.Exists)
+        {
+            GenerateCustomers(50);
+        }
+
+        var subdivisionIndexExistsResponse = _client.Indices.Exists("test_subdivision_index");
+        if (!subdivisionIndexExistsResponse.Exists)
+        {
+            GenerateSubdivisions(50);
+        }
+    }
+
+    [Fact]
+    public void InitializeSeedElasticsearch()
+    {
+        // Nothing else here.
+    }
+
+    private void GenerateSubdivisions(int count)
     {
         var subdivisionFaker = new SubdivisionFaker();
-        var subdivisions = subdivisionFaker.Generate(500);
+        var subdivisions = subdivisionFaker.Generate(count);
 
         var bulkAllSubdivision = _client.BulkAll(subdivisions, b => b
             .Index("test_subdivision_index")
@@ -48,13 +74,13 @@ public class ElasticsearchIntegrationTests
         ));
     }
 
-    private void GenerateCustomers(Action onComplete)
+    private void GenerateCustomers(int count)
     {
         var customerFaker = new CustomerFaker();
 
 
         // Generate 500 fake customers and 500 fake subdivisions
-        var customers = customerFaker.Generate(500);
+        var customers = customerFaker.Generate(count);
 
 
         // Index these into Elasticsearch
@@ -87,29 +113,12 @@ public class ElasticsearchIntegrationTests
         ));
     }
 
-    [Fact]
+    [Fact(Skip = "Integration Test")]
     public void Should_Onboard_Data_Into_Indices()
     {
-        var resetEvent = new ManualResetEvent(false); // For synchronization
+        _client.Indices.Refresh("test_customer_index");
+        _client.Indices.Refresh("test_subdivision_index");
 
-        // 1. Delete indices if they exist
-        _client.Indices.Delete("test_customer_index");
-        _client.Indices.Delete("test_subdivision_index");
-
-        // 2. Create new indices
-        _client.Indices.Create("test_customer_index", c => c
-            .Map(m => m
-                .AutoMap<Customer>()));
-
-        _client.Indices.Create("test_subdivision_index", c => c
-            .Map(m => m
-                .AutoMap<Subdivision>()));
-
-        // 3. Index some test data
-        GenerateCustomers(() => GenerateSubdivisions(() => resetEvent.Set()));
-
-        // Wait for data to be onboarded
-        resetEvent.WaitOne();
 
         // 4. Refresh the indices to make sure the data is searchable
         _client.Indices.Refresh("test_customer_index");

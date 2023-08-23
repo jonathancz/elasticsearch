@@ -15,7 +15,9 @@
 
     <ItemGroup>
       <PackageReference Include="Bogus" Version="34.0.2" />
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.1" />
       <PackageReference Include="NEST" Version="7.17.5" />
+      <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
       <PackageReference Include="xunit" Version="2.5.1-pre.20" />
     </ItemGroup>
 
