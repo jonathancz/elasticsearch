@@ -1,5 +1,6 @@
 ﻿using ElasticsearchClient.Modules;
 using ElasticsearchClient.Modules.Customer;
+using ElasticsearchClient.Modules.Part;
 using ElasticsearchClient.Modules.Subdivision;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
@@ -37,6 +38,21 @@ public class SearchService : ISearchService
             .Query(q => q
                 .QueryString(d => d
                     .Query(query))));
+        return searchResponse.Documents;
+    }
+
+    public async Task<IEnumerable<ItemPart>> PerformItemSearch(string query, string indexName)
+    {
+        var searchResponse = await _elasticClient.SearchAsync<ItemPart>(s => s
+            .Index(indexName)
+            .Query(q => q
+                .Match(m => m
+                    .Field(f => f.Partcode)
+                    .Query(query)
+                    .Fuzziness(Fuzziness.Auto)
+                )
+            )
+        );
         return searchResponse.Documents;
     }
 }

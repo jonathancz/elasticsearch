@@ -24,6 +24,7 @@ public class SearchController : ControllerBase
         {
             "customer" => "test_customer_index",
             "subdivision" => "test_subdivision_index",
+            "item" => "test_item_index",
             _ => null
         };
 
@@ -40,6 +41,11 @@ public class SearchController : ControllerBase
         else if (entityType.ToLower() == "subdivision")
         {
             var results = await _searchService.PerformSubdivisionSearch(query, indexName);
+            return Ok(results);
+        }
+        else if (entityType.ToLower() == "item")
+        {
+            var results = await _searchService.PerformItemSearch(query, indexName);
             return Ok(results);
         }
         else
