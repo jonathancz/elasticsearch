@@ -1,4 +1,5 @@
 ﻿using ElasticsearchClient.Modules.Customer;
+using ElasticsearchClient.Modules.Part;
 using ElasticsearchClient.Modules.Subdivision;
 using Nest;
 using Xunit;
@@ -8,84 +9,78 @@ namespace ElasticsearchClient.Persistence;
 public class ElasticsearchIntegrationTests
 {
     private readonly ElasticClient _client;
+    private static readonly AutoResetEvent resetEvent = new AutoResetEvent(false); // Added for synchronization
 
     public ElasticsearchIntegrationTests()
     {
-        var settings = new ConnectionSettings(new Uri("http://localhost:9200")); // Replace with your Elasticsearch URI
+        var settings = new ConnectionSettings(new Uri("http://localhost:9200"));
         _client = new ElasticClient(settings);
-
         Setup();
     }
 
     private void Setup()
     {
-        _client.Indices.Delete("test_customer_index");
-        _client.Indices.Delete("test_subdivision_index");
-        
-        var customerIndexExistsResponse = _client.Indices.Exists("test_customer_index");
-        if (!customerIndexExistsResponse.Exists)
-        {
-            GenerateCustomers(50);
-        }
+        // Consolidated index deletion and creation to a single method
+        HandleIndices();
 
-        var subdivisionIndexExistsResponse = _client.Indices.Exists("test_subdivision_index");
-        if (!subdivisionIndexExistsResponse.Exists)
+        // Generating data if indices do not exist
+        GenerateDataIfNeeded("test_customer_index", () => GenerateCustomers(500));
+        GenerateDataIfNeeded("test_subdivision_index", () => GenerateSubdivisions(500));
+        GenerateDataIfNeeded("test_item_index", () => GenerateItems(500));
+    }
+
+
+    private void HandleIndices()
+    {
+        // Consolidated index deletion logic
+        DeleteIndices("test_customer_index", "test_subdivision_index");
+    }
+
+    private void DeleteIndices(params string[] indexNames)
+    {
+        foreach (var indexName in indexNames)
         {
-            GenerateSubdivisions(50);
+            _client.Indices.Delete(indexName);
+        }
+    }
+
+    private void GenerateDataIfNeeded(string indexName, Action generateAction)
+    {
+        var indexExistsResponse = _client.Indices.Exists(indexName);
+        if (!indexExistsResponse.Exists)
+        {
+            generateAction();
         }
     }
 
     [Fact]
     public void InitializeSeedElasticsearch()
     {
-        // Nothing else here.
+        resetEvent.WaitOne(); // Wait for data generation to complete
     }
 
     private void GenerateSubdivisions(int count)
     {
-        var subdivisionFaker = new SubdivisionFaker();
-        var subdivisions = subdivisionFaker.Generate(count);
-
-        var bulkAllSubdivision = _client.BulkAll(subdivisions, b => b
-            .Index("test_subdivision_index")
-            .BackOffTime("30s")
-            .BackOffRetries(2)
-            .RefreshOnCompleted(true)
-            .MaxDegreeOfParallelism(Environment.ProcessorCount)
-            .Size(100)
-        );
-
-        bulkAllSubdivision.Subscribe(new BulkAllObserver(
-            onNext: (b) =>
-            {
-                // Log or print the processed page
-                Console.WriteLine($"Indexed page {b.Page}");
-            },
-            onError: (e) =>
-            {
-                // Log or print the error
-                Console.WriteLine($"An error occurred: {e.Message}");
-            },
-            onCompleted: () =>
-            {
-                // Log or print completion
-                Console.WriteLine("Bulk indexing complete");
-            }
-        ));
+        var subdivisions = new SubdivisionFaker().Generate(count);
+        BulkInsertSubdivision(subdivisions, "test_subdivision_index");
     }
 
     private void GenerateCustomers(int count)
     {
-        var customerFaker = new CustomerFaker();
+        var customers = new CustomerFaker().Generate(count);
+        BulkInsertCustomer(customers, "test_customer_index");
+    }
 
+    private void GenerateItems(int count)
+    {
+        var items = new ItemPartFaker().Generate(count);
+        BulkInsertCustomer(items, "test_item_index");
+    }
 
-        // Generate 500 fake customers and 500 fake subdivisions
-        var customers = customerFaker.Generate(count);
-
-
-        // Index these into Elasticsearch
-        var bulkAllCustomer = _client.BulkAll(customers, b => b
-            .Index("test_customer_index")
+    private void BulkInsertCustomer(IEnumerable<Customer> documents, string indexName)
+    {
+        var bulkAll = _client.BulkAll(documents, b => b
+            .Index(indexName)
             .BackOffTime("30s")
             .BackOffRetries(2)
             .RefreshOnCompleted(true)
@@ -93,25 +88,61 @@ public class ElasticsearchIntegrationTests
             .Size(100)
         );
 
-
-        bulkAllCustomer.Subscribe(new BulkAllObserver(
-            onNext: (b) =>
-            {
-                // Log or print the processed page
-                Console.WriteLine($"Indexed page {b.Page}");
-            },
-            onError: (e) =>
-            {
-                // Log or print the error
-                Console.WriteLine($"An error occurred: {e.Message}");
-            },
+        bulkAll.Subscribe(new BulkAllObserver(
+            onNext: (b) => Console.WriteLine($"Indexed page {b.Page}"),
+            onError: (e) => Console.WriteLine($"An error occurred: {e.Message}"),
             onCompleted: () =>
             {
-                // Log or print completion
                 Console.WriteLine("Bulk indexing complete");
+                resetEvent.Set(); // Signal that data generation is complete
             }
         ));
     }
+
+    private void BulkInsertCustomer(IEnumerable<ItemPart> documents, string indexName)
+    {
+        var bulkAll = _client.BulkAll(documents, b => b
+            .Index(indexName)
+            .BackOffTime("30s")
+            .BackOffRetries(2)
+            .RefreshOnCompleted(true)
+            .MaxDegreeOfParallelism(Environment.ProcessorCount)
+            .Size(100)
+        );
+
+        bulkAll.Subscribe(new BulkAllObserver(
+            onNext: (b) => Console.WriteLine($"Indexed page {b.Page}"),
+            onError: (e) => Console.WriteLine($"An error occurred: {e.Message}"),
+            onCompleted: () =>
+            {
+                Console.WriteLine("Bulk indexing complete");
+                resetEvent.Set(); // Signal that data generation is complete
+            }
+        ));
+    }
+
+    private void BulkInsertSubdivision(IEnumerable<Subdivision> documents, string indexName)
+    {
+        var bulkAll = _client.BulkAll(documents, b => b
+            .Index(indexName)
+            .BackOffTime("30s")
+            .BackOffRetries(2)
+            .RefreshOnCompleted(true)
+            .MaxDegreeOfParallelism(Environment.ProcessorCount)
+            .Size(100)
+        );
+
+        bulkAll.Subscribe(new BulkAllObserver(
+            onNext: (b) => Console.WriteLine($"Indexed page {b.Page}"),
+            onError: (e) => Console.WriteLine($"An error occurred: {e.Message}"),
+            onCompleted: () =>
+            {
+                Console.WriteLine("Bulk indexing complete");
+                resetEvent.Set(); // Signal that data generation is complete
+            }
+        ));
+    }
+
 
     [Fact(Skip = "Integration Test")]
     public void Should_Onboard_Data_Into_Indices()
