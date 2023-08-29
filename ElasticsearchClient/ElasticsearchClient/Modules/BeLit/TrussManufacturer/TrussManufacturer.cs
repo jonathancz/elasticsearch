@@ -8,9 +8,9 @@ public class TrussManufacturer
     public string Name { get; private set; }
 }
 
-public class TrussManufactureFake : Faker<TrussManufacturer>
+public class TrussManufactureFaker : Faker<TrussManufacturer>
 {
-    public TrussManufactureFake()
+    public TrussManufactureFaker()
     {
         RuleFor(x => x.Id, f => f.Random.Int(1, 1000));
         RuleFor(x => x.Name, f => f.Company.CompanyName());
