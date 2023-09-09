@@ -49,7 +49,11 @@ public class Startup
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
         });
 
-        app.UseCors();
+        app.UseCors(builder => builder
+            .WithOrigins("http://localhost:3000")  // replace with your React app's address
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+        );
         app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
     }
 }
