@@ -16,6 +16,7 @@ const App = () => {
     const [subdivisions, setSubdivisions] = useState<Array<any>>([]);
 
     const handleSearch = async () => {
+        // Replace with your API endpoint
         const apiUrl = `https://localhost:7297/api/Search/searchSubdivisionByCustomerId?customerId=${customerId}`;
 
         try {
@@ -25,6 +26,12 @@ const App = () => {
             }
         } catch (error) {
             console.error('An error occurred while fetching data:', error);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch();
         }
     };
 
@@ -58,27 +65,30 @@ const App = () => {
                                 label="Enter Customer ID"
                                 value={customerId}
                                 onChange={(e) => setCustomerId(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 autoFocus
                             />
                             <IconButton type="submit" color="primary" onClick={handleSearch}>
                                 <SearchIcon />
                             </IconButton>
                         </div>
-                        <TableContainer component={Paper} style={{marginTop: '1rem'}}>
-                            <Table>
+                        <TableContainer component={Paper} style={{ marginTop: '2rem' }}>
+                            <Table aria-label="simple table">
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>ID</TableCell>
-                                        <TableCell>Name</TableCell>
-                                        <TableCell>Customer ID</TableCell>
+                                        <TableCell align="right">Name</TableCell>
+                                        <TableCell align="right">Customer ID</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {subdivisions.map((subdivision, index) => (
+                                    {subdivisions.map((row, index) => (
                                         <TableRow key={index}>
-                                            <TableCell>{subdivision.id}</TableCell>
-                                            <TableCell>{subdivision.name}</TableCell>
-                                            <TableCell>{subdivision.customerId}</TableCell>
+                                            <TableCell component="th" scope="row">
+                                                {row.id}
+                                            </TableCell>
+                                            <TableCell align="right">{row.name}</TableCell>
+                                            <TableCell align="right">{row.customerId}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
