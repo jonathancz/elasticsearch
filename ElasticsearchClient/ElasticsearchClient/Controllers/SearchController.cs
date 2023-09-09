@@ -27,13 +27,8 @@ public class SearchController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Get(string query, string entityType)
+    public async Task<IActionResult> Get(string? query = "", string? entityType = "customer")
     {
-        if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(entityType))
-        {
-            return BadRequest("Query and entity type must be provided.");
-        }
-
         string indexName = entityType.ToLower() switch
         {
             "customer" => "test_customer_index",

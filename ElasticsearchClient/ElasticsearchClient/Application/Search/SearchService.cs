@@ -18,18 +18,40 @@ public class SearchService : ISearchService
 
     public async Task<IEnumerable<Customer>> PerformCustomerSearch(string query, string indexName)
     {
-        var searchResponse = await _elasticClient.SearchAsync<Customer>(s => s
-            .Index(indexName)
-            .Query(q => q
+        // Create a new search descriptor
+        SearchDescriptor<Customer> searchDescriptor = new SearchDescriptor<Customer>()
+            .Size(1000);
+
+        // If indexName is provided, set the index
+        if (!string.IsNullOrEmpty(indexName))
+        {
+            searchDescriptor = searchDescriptor.Index(indexName);
+        }
+
+        // Determine the type of query (MatchAll or Match based on 'query')
+        if (string.IsNullOrEmpty(query))
+        {
+            // MatchAll query to get all documents
+            searchDescriptor = searchDescriptor.Query(q => q.MatchAll());
+        }
+        else
+        {
+            // Match query for the specified field
+            searchDescriptor = searchDescriptor.Query(q => q
                 .Match(m => m
                     .Field(f => f.Name)
                     .Query(query)
                     .Fuzziness(Fuzziness.Auto)
                 )
-            )
-        );
+            );
+        }
+
+        // Perform the search
+        var searchResponse = await _elasticClient.SearchAsync<Customer>(searchDescriptor);
+
         return searchResponse.Documents;
     }
+
 
     public async Task<IEnumerable<Subdivision>> PerformSubdivisionSearch(string query, string indexName)
     {
