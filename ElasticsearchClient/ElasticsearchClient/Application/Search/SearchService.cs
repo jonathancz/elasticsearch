@@ -55,4 +55,26 @@ public class SearchService : ISearchService
         );
         return searchResponse.Documents;
     }
+
+    public List<Subdivision> SearchSubdivisionsByCustomerId(int customerId)
+    {
+        var searchResponse = _elasticClient.Search<Subdivision>(s => s
+            .Index("test_subdivision_index")
+            .Query(q => q
+                .Term(t => t
+                    .Field(f => f.CustomerId)
+                    .Value(customerId)
+                )
+            )
+        );
+
+        if (searchResponse.IsValid)
+        {
+            return searchResponse.Documents.ToList();
+        }
+        else
+        {
+            return new List<Subdivision>();
+        }
+    }
 }

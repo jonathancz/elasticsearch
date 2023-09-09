@@ -10,6 +10,8 @@ public class ElasticsearchIntegrationTests
 {
     private readonly ElasticClient _client;
     private static readonly AutoResetEvent resetEvent = new AutoResetEvent(false); // Added for synchronization
+    private string[] ValidIndexes = new[] { "test_customer_index", "test_subdivision_index", "test_item_index" };
+    private List<int> _customerIds;
 
     public ElasticsearchIntegrationTests()
     {
@@ -33,7 +35,7 @@ public class ElasticsearchIntegrationTests
     private void HandleIndices()
     {
         // Consolidated index deletion logic
-        DeleteIndices("test_customer_index", "test_subdivision_index");
+        DeleteIndices(ValidIndexes);
     }
 
     private void DeleteIndices(params string[] indexNames)
@@ -61,13 +63,25 @@ public class ElasticsearchIntegrationTests
 
     private void GenerateSubdivisions(int count)
     {
-        var subdivisions = new SubdivisionFaker().Generate(count);
+        var random = new Random();
+
+        // If customerIds is null or empty, we can't generate subdivisions with CustomerIds.
+        if (_customerIds == null || !_customerIds.Any())
+        {
+            throw new InvalidOperationException("Customer Ids must be generated before Subdivisions.");
+        }
+
+        var subdivisions = new SubdivisionFaker()
+            .RuleFor(s => s.CustomerId, f => _customerIds[random.Next(_customerIds.Count)])
+            .Generate(count);
+
         BulkInsertSubdivision(subdivisions, "test_subdivision_index");
     }
 
     private void GenerateCustomers(int count)
     {
         var customers = new CustomerFaker().Generate(count);
+        _customerIds = customers.Select(c => c.Id).ToList(); // Assuming Customer has an Id property.
         BulkInsertCustomer(customers, "test_customer_index");
     }
 

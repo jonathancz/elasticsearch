@@ -10,4 +10,6 @@ public interface ISearchService
     Task<IEnumerable<Customer>> PerformCustomerSearch(string query, string indexName);
     Task<IEnumerable<Subdivision>> PerformSubdivisionSearch(string query, string indexName);
     Task<IEnumerable<ItemPart>>  PerformItemSearch(string query, string indexName);
+    
+    List<Subdivision> SearchSubdivisionsByCustomerId(int customerId);
 }

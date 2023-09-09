@@ -11,6 +11,20 @@ public class SearchController : ControllerBase
     {
         _searchService = searchService;
     }
+    
+    [HttpGet("searchSubdivisionByCustomerId")]
+    public IActionResult SearchSubdivisionsByCustomerId([FromQuery] int customerId)
+    {
+        var subdivisions = _searchService.SearchSubdivisionsByCustomerId(customerId);
+        if (subdivisions.Count > 0)
+        {
+            return Ok(subdivisions);
+        }
+        else
+        {
+            return NotFound();
+        }
+    }
 
     [HttpGet]
     public async Task<IActionResult> Get(string query, string entityType)
