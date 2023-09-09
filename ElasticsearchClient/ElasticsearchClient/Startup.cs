@@ -24,6 +24,17 @@ public class Startup
         });
 
         services.AddControllers();
+        
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(
+                builder =>
+                {
+                    builder.WithOrigins("http://localhost:3000") // Replace with your React app's URL
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+        });
     }
 
     public void Configure(IApplicationBuilder app)
@@ -38,7 +49,7 @@ public class Startup
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
         });
 
-
+        app.UseCors();
         app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
     }
 }
